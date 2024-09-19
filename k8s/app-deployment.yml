@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vproapp
+  labels:
+    app: vproapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vproapp
+  template:
+    metadata:
+      labels:
+        app: vproapp
+    spec:
+      initContainers:
+      - name: init-mydb
+        image: busybox:latest
+        command: ["/bin/sh","-c","until nslookup vprodb; do echo waiting for mydb; sleep 2; done;"]
+      - name: init-memcache
+        image: busybox:latest
+        command: ["/bin/sh","-c","until nslookup vprocache01; do echo waiting for mycache; sleep 2; done;"]
+      containers:
+      - name: vproapp
+        image: fadhiljr/vproapp:vproapp-1.0
+        resources:
+          limits:
+            memory: "250Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8080
+          name: vproapp-port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vproapp
+spec:
+  type: LoadBalancer
+  selector:
+    app: vproapp
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+
